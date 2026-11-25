@@ -4,32 +4,36 @@
 [![rank](https://make.fun/badge/u-markk-st-one-line-office-jokes-a51f2bcc/4orky/one-line-office-jokes/rank.svg)](https://make.fun/c/u-markk-st-one-line-office-jokes-a51f2bcc/leaderboard?utm_source=github&utm_medium=readme&utm_campaign=u-markk-st-one-line-office-jokes-a51f2bcc)
 [![reward](https://make.fun/badge/u-markk-st-one-line-office-jokes-a51f2bcc/4orky/one-line-office-jokes/reward.svg)](https://make.fun/c/u-markk-st-one-line-office-jokes-a51f2bcc?utm_source=github&utm_medium=readme&utm_campaign=u-markk-st-one-line-office-jokes-a51f2bcc)
 
-One single line that makes office life funny. The entry:
+One sentence that makes office life funny. The entry:
 
 > We switched to hot-desking so nobody owns a desk, but Karen's mug has squatter's rights.
 
-## Why this line
+## Why this line works
 
-Hot-desking is a real office policy, and the joke turns on a detail
-everyone in an open-plan office recognises: nobody owns a desk any
-more, yet one person's mug has quietly claimed squatter's rights
-over the same spot every day. The setup sounds like a plain policy
-announcement; the laugh lands on the last two words, when an
-inanimate object turns out to have more tenure than any employee.
-One line, 88 characters, no setup beyond the sentence itself.
+Hot-desking is a real office policy, and the joke pivots on a detail
+anyone in an open-plan office knows at once: no employee owns a desk
+any more, yet one person's mug has quietly claimed squatter's rights
+over the same spot day after day. The first half reads like a plain
+policy announcement; the laugh arrives with the final two words,
+when a coffee mug turns out to have more tenure than any employee.
+A single sentence, 88 characters, with no setup beyond itself.
 
-## How it was picked
+## How the winner was chosen
 
-Fourteen original candidates were drafted by hand and scored 0–10
-on five qualities: whether the line turns on a real office detail,
-how funny it is, whether the joke lands in the last few words, how
-fresh the angle is, and how tight the wording is. The winning line
-scored 48 out of 50.
+Seven original one-liners were drafted by hand and graded 0–10 on
+five qualities: how funny the line is, whether it turns on a real
+office detail, whether the joke lands in the closing words, how
+fresh the angle is, and how lean the wording is. The marks are
+given in that order, and fixed weights (3, 2, 3, 1, 1) turn them
+into a total. The winning line
+scores 96, eleven points clear of the runner-up at 85, so the
+victory is not a coin toss: the program refuses to pick at all
+unless the winner leads by at least five points.
 
-A second pass tightened it further: "moved to" became "switched
-to" and "yet somehow" became "but", which lifted tightness from 9
-to 10 and took the line from a tie at 47 to an outright win at 48.
-Nothing else in the line changed.
+A second pass sharpened the winner further: "moved to" became
+"switched to" and "yet somehow" became "but", which lifted its
+leanness to a full 10 and carried it from a tie into an outright
+win. Nothing else in the line changed.
 
 ## How to run
 
@@ -37,15 +41,17 @@ Nothing else in the line changed.
 python3 main.py
 ```
 
-The program scores a shortlist of candidates with fixed weights,
-picks the clear winner (a tie at the top is refused), checks the
-line against the competition's limits (one line, 1–200 characters),
-writes it to `/output/entry.txt` (or `$OUTPUT_PATH`), and prints
-the SHA-256 of what it wrote so the output can be verified:
+The program grades the seven candidates with the fixed weights,
+elects the clear winner (a tie, or a margin under five points,
+stops the run), measures the line against the contest limits
+(one line, 1–200 characters, no surrounding space), writes it to
+`/output/entry.txt` (or `$OUTPUT_PATH`), then reads the file back
+and checks both the bytes and the SHA-256 digest against the
+line it chose, so a partial write cannot slip through:
 
 ```
-wrote 88 characters to /output/entry.txt
-sha256: c9beaceb7c0aa23307fb2a6e89ec47adf501c84e34b090f6f7236cc6d0584302
+entry: 88 chars -> /output/entry.txt
+sha256 c9beaceb7c0aa23307fb2a6e89ec47adf501c84e34b090f6f7236cc6d0584302
 We switched to hot-desking so nobody owns a desk, but Karen's mug has squatter's rights.
 ```
 

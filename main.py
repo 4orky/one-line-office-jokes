@@ -1,115 +1,121 @@
 #!/usr/bin/env python3
-"""One-line office joke entry.
+# One-line office joke entry.
+#
+# Seven hand-written candidates are graded on five qualities and the
+# clear winner is written out. The grading is fixed arithmetic, so
+# the same candidates always elect the same line, and the elected
+# line is measured against the contest limits before anything is
+# written to disk. A tied race at the top is refused: the winner
+# has to beat the runner-up outright, never on list order.
+#
+# Qualities, in the order the marks below are given:
+#   laugh     -- the line is actually funny
+#   concrete  -- it turns on a specific, recognisable office detail
+#   landing   -- the laugh arrives in the closing words
+#   novel     -- the angle is not one heard a hundred times
+#   lean      -- no word is dead weight
+#
+# Nothing here touches the network, rolls dice, or reads any input
+# beyond this file. The output path defaults to /output/entry.txt
+# and can be pointed elsewhere with OUTPUT_PATH.
 
-The program holds a small shortlist of office jokes, scores each one
-on five qualities, and writes the best-scoring line to the output
-file. The scoring is deliberately simple and fully deterministic:
-the same shortlist always produces the same winner, and the winner
-is checked against the competition's own limits before anything is
-written. A tie at the top is treated as a fault, not settled by
-luck: the shortlist must have one clear winner.
+import hashlib
+import os
+import sys
 
-Qualities, most important first:
-  * funny      -- does the line actually make someone laugh
-  * punch      -- does the laugh land in the last few words
-  * detail     -- does it turn on a real, specific office detail
-  * fresh      -- is it an angle nobody has heard a hundred times
-  * tight      -- is every word earning its place
+CRITERIA = ("laugh", "concrete", "landing", "novel", "lean")
+WEIGHTS = (3, 2, 3, 1, 1)
+LIMIT = 200
 
-The output path defaults to /output/entry.txt and can be moved
-with the OUTPUT_PATH environment variable. No network, no random
-choices, no input besides this file.
-"""
-
-from hashlib import sha256
-from os import environ
-from pathlib import Path
-
-# Weights for the five qualities, in priority order.
-WEIGHTS = {"funny": 3, "punch": 3, "detail": 2, "fresh": 1, "tight": 1}
-
-# Shortlist. Each entry carries the line plus one mark (0-10) per
-# quality. All lines were written for this entry.
-ENTRIES = [
-    {
-        "line": "We switched to hot-desking so nobody owns a desk, but Karen's mug has squatter's rights.",
-        "marks": {"funny": 10, "punch": 9, "detail": 10, "fresh": 9, "tight": 10},
-    },
-    {
-        "line": "Reply-all is how I learned that forty people can say 'please remove me' and nobody can.",
-        "marks": {"funny": 8, "punch": 9, "detail": 9, "fresh": 8, "tight": 8},
-    },
-    {
-        "line": "The quick sync lasted forty-seven minutes, which is office for 'see you next quarter'.",
-        "marks": {"funny": 8, "punch": 8, "detail": 9, "fresh": 8, "tight": 9},
-    },
-    {
-        "line": "The printer only jams when the document is urgent, which is why I now email everything to myself twice.",
-        "marks": {"funny": 8, "punch": 8, "detail": 9, "fresh": 8, "tight": 8},
-    },
-    {
-        "line": "Our Monday meeting has an agenda, a timer, and a strict rule against mentioning the agenda.",
-        "marks": {"funny": 8, "punch": 8, "detail": 9, "fresh": 7, "tight": 9},
-    },
-    {
-        "line": "I set my out-of-office to 'on holiday' and my inbox set itself to 'on fire'.",
-        "marks": {"funny": 8, "punch": 8, "detail": 8, "fresh": 8, "tight": 8},
-    },
-    {
-        "line": "The thermostat has a password now, and Dave from facilities is the only one who knows it.",
-        "marks": {"funny": 7, "punch": 7, "detail": 8, "fresh": 7, "tight": 8},
-    },
-]
+# Candidates: (line, marks in CRITERIA order). All seven lines were
+# drafted by hand for this entry.
+CANDIDATES = (
+    ("We switched to hot-desking so nobody owns a desk, but Karen's mug has squatter's rights.", (10, 10, 9, 9, 10)),
+    ("Reply-all is how I learned that forty people can say 'please remove me' and nobody can.", (8, 9, 9, 8, 8)),
+    ("The quick sync lasted forty-seven minutes, which is office for 'see you next quarter'.", (8, 9, 8, 8, 9)),
+    ("The printer only jams when the document is urgent, which is why I now email everything to myself twice.", (8, 9, 8, 8, 8)),
+    ("Our Monday meeting has an agenda, a timer, and a strict rule against mentioning the agenda.", (8, 9, 8, 7, 9)),
+    ("I set my out-of-office to 'on holiday' and my inbox set itself to 'on fire'.", (8, 8, 8, 8, 8)),
+    ("The thermostat has a password now, and Dave from facilities is the only one who knows it.", (7, 8, 7, 7, 8)),
+)
 
 
-def tally(entry):
-    """Weighted total for one entry's five marks."""
-    return sum(WEIGHTS[name] * value for name, value in entry["marks"].items())
+def weighted_total(marks):
+    """Add up one candidate's marks under the fixed weights."""
+    total = 0
+    for weight, mark in zip(WEIGHTS, marks):
+        total += weight * mark
+    return total
 
 
-def choose_best(entries):
-    """Return the highest-scoring entry.
+def pick_winner(candidates):
+    """Elect the highest-scoring candidate.
 
-    The ranking is stable, but a tie at the top is refused outright:
-    the winner must beat the runner-up by at least one point, so the
-    pick never depends on list order or on luck.
-    """
-    ranked = sorted(entries, key=tally, reverse=True)
-    if len(ranked) > 1 and tally(ranked[0]) == tally(ranked[1]):
-        raise SystemExit("self-check failed: tie at the top, no clear winner")
-    return ranked[0]
-
-
-def verify_line(line):
-    """Check the chosen line against the competition's limits.
-
-    Returns a list of problems; an empty list means the line is fine.
-    """
-    problems = []
-    if "\n" in line or "\r" in line:
-        problems.append("entry is not a single line")
-    if not 1 <= len(line) <= 200:
-        problems.append("length %d is outside 1..200 characters" % len(line))
-    if line != line.strip():
-        problems.append("entry has surrounding whitespace")
-    return problems
+    Scores are sorted highest first. A tie at the top aborts the
+    run, so the pick never silently depends on list order."""
+    scored = sorted(
+        ((weighted_total(marks), text) for text, marks in candidates),
+        key=lambda pair: pair[0],
+        reverse=True,
+    )
+    top, second = scored[0], scored[1]
+    if top[0] == second[0]:
+        sys.exit("no clear winner: top two tied at %d points" % top[0])
+    if top[0] - second[0] < 5:
+        sys.exit(
+            "winner's margin is too thin: %d over %d, need at least 5"
+            % (top[0], second[0])
+        )
+    return top[1]
 
 
-def main():
-    best = choose_best(ENTRIES)
-    line = best["line"]
-    problems = verify_line(line)
-    if problems:
-        raise SystemExit("self-check failed: " + "; ".join(problems))
+def check_entry(text):
+    """Measure the elected line against the contest limits.
 
-    out = Path(environ.get("OUTPUT_PATH", "/output/entry.txt"))
-    out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(line, encoding="utf-8")
-    digest = sha256(out.read_bytes()).hexdigest()
-    print("wrote %d characters to %s" % (len(line), out))
-    print("sha256: %s" % digest)
-    print(line)
+    Returns an empty string when the line is acceptable, otherwise
+    a short description of the first problem found."""
+    if "\n" in text or "\r" in text:
+        return "entry spans more than one line"
+    if not text:
+        return "entry is empty"
+    if len(text) > LIMIT:
+        return "entry is %d characters, limit is %d" % (len(text), LIMIT)
+    if text.strip() != text:
+        return "entry has leading or trailing space"
+    if len(text.split()) < 5:
+        return "entry is too short to be a joke"
+    return ""
+
+
+def write_entry(text):
+    """Write the line out and prove the file holds exactly it."""
+    dest = os.environ.get("OUTPUT_PATH", "/output/entry.txt")
+    folder = os.path.dirname(dest)
+    if folder:
+        os.makedirs(folder, exist_ok=True)
+    payload = text.encode("utf-8")
+    expected = hashlib.sha256(payload).hexdigest()
+    with open(dest, "wb") as handle:
+        handle.write(payload)
+    with open(dest, "rb") as handle:
+        saved = handle.read()
+    if saved != payload:
+        sys.exit("round-trip check failed: file differs from entry")
+    digest = hashlib.sha256(saved).hexdigest()
+    if digest != expected:
+        sys.exit("digest check failed: written file digest does not match entry")
+    print("entry: %d chars -> %s" % (len(text), dest))
+    print("sha256 %s" % digest)
+    print(text)
+
+
+def run():
+    winner = pick_winner(CANDIDATES)
+    problem = check_entry(winner)
+    if problem:
+        sys.exit("entry rejected: " + problem)
+    write_entry(winner)
 
 
 if __name__ == "__main__":
-    main()
+    run()
