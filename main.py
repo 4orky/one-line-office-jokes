@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 # One-line office joke entry.
 #
 # Seven hand-written candidates are graded on five qualities and the
@@ -117,5 +116,4 @@ def run():
     write_entry(winner)
 
 
-if __name__ == "__main__":
-    run()
+if __name__ == "__main__": run()
